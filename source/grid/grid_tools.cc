@@ -1788,11 +1788,14 @@ next_cell:
     subdomain_boundary_cells_radii.reserve (subdomain_boundary_cells.size());
     // compute cell radius for each boundary cell of the predicate subdomain
     for ( typename std::vector<typename MeshType::active_cell_iterator>::const_iterator
-          boundary_cell_iterator  = subdomain_boundary_cells.begin();
-          boundary_cell_iterator != subdomain_boundary_cells.end(); ++boundary_cell_iterator )
+          subdomain_boundary_cell_iterator  = subdomain_boundary_cells.begin();
+          subdomain_boundary_cell_iterator != subdomain_boundary_cells.end(); ++subdomain_boundary_cell_iterator )
       {
-        subdomain_boundary_cells_centers.push_back( (*boundary_cell_iterator)->center() );
-        subdomain_boundary_cells_radii.push_back((*boundary_cell_iterator )->diameter() / 2.0);
+        const std::pair<Point<spacedim>, double> &
+        subdomain_boundary_cell_enclosing_ball = (*subdomain_boundary_cell_iterator)->enclosing_ball();
+
+        subdomain_boundary_cells_centers.push_back( subdomain_boundary_cell_enclosing_ball.first);
+        subdomain_boundary_cells_radii.push_back( subdomain_boundary_cell_enclosing_ball.second);
       }
     AssertThrow( subdomain_boundary_cells_radii.size() == subdomain_boundary_cells_centers.size(),
                  ExcInternalError());
@@ -1811,23 +1814,24 @@ next_cell:
         if ( predicate(cell))
           continue;
 
-        // define cell_radius as the farthest distance of cell vertices to cell center
-        // TODO: use cell->enclosing_ball() at suitables places in this code.
-        const double cell_radius = cell->diameter() / 2.0;
+        const std::pair<Point<spacedim>, double> &cell_enclosing_ball
+          = cell->enclosing_ball();
+
+        const Point<spacedim> &cell_enclosing_ball_center = cell_enclosing_ball.first;
+        const double &cell_enclosing_ball_radius = cell_enclosing_ball.second;
 
         bool cell_inside = true; // reset for each cell
 
-        // Faster to check with cell->center() instead of all of its vertices
         for (unsigned int d = 0; d < spacedim; ++d)
-          cell_inside &= (cell->center()[d] + cell_radius > bounding_box.first[d])
-                         && (cell->center()[d] - cell_radius < bounding_box.second[d]);
+          cell_inside &= (cell_enclosing_ball_center[d] + cell_enclosing_ball_radius > bounding_box.first[d])
+                         && (cell_enclosing_ball_center[d] - cell_enclosing_ball_radius < bounding_box.second[d]);
         // cell_inside is true if any of the cell vertices are inside the extended bounding box
 
         // Ignore all the cells that are outside the extended bounding box
         if (cell_inside) // cell is
           for (unsigned int i =0; i< subdomain_boundary_cells_radii.size(); ++i)
-            if ( (cell->center() - subdomain_boundary_cells_centers[i]).norm_square()
-                 <  Utilities::fixed_power<2>( cell_radius +
+            if ( (cell_enclosing_ball_center - subdomain_boundary_cells_centers[i]).norm_square()
+                 <  Utilities::fixed_power<2>( cell_enclosing_ball_radius +
                                                subdomain_boundary_cells_radii[i] +
                                                layer_thickness +
                                                DOUBLE_EPSILON) )
