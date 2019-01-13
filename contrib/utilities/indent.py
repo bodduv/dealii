@@ -91,7 +91,7 @@ def check_clang_format_version(clang_format_binary, compatible_version_list):
                                        clang_format_version,
                                        re.IGNORECASE).group(1)
             if version_number not in compatible_version_list:
-                logging.error(
+                logging.exception(
                     """
                     ***
                     ***   No compatible clang-format program found.
@@ -100,10 +100,9 @@ def check_clang_format_version(clang_format_binary, compatible_version_list):
                     ***""" ' '.join(compatible_version_list)
                 )
         except subprocess.CalledProcessError as subprocess_error:
-            logging.error(subprocess_error)
-            raise
+            logging.exception(subprocess_error)
     else:
-        logging.error(
+        logging.exception(
             """
             ***
             ***   No clang-format program found.
@@ -158,11 +157,9 @@ def format_file(parsed_arguments, task_queue, temp_dir):
         try:
             subprocess.call(apply_clang_format_str, shell=True)
         except OSError as os_error:
-            logging.error(os_error)
-            raise
+            logging.exception(os_error)
         except subprocess.CalledProcessError as subprocess_error:
-            logging.error(subprocess_error)
-            raise
+            logging.exception(subprocess_error)
         #
         # Compare the original file and the formatted file from clang-format.
         # If it's a dry run and if files differ, write out that the original file
